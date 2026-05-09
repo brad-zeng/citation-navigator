@@ -1,0 +1,24 @@
+# Python
+venv/
+env/
+__pycache__/
+*.pyc
+*.pyo
+
+# App data
+uploads/
+data/
+citations_output.json
+
+# Environment
+.env
+
+# IDE
+.idea/
+.vscode/
+
+# Node
+frontend/node_modules/
+
+# OS
+.DS_Store
