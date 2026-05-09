@@ -288,7 +288,7 @@ function App() {
                   rel="noopener noreferrer"
                   className="text-blue-500 hover:underline"
                 >
-                  View on Semantic Scholar
+                  View on OpenAlex
                 </a>
               </p>
             )}

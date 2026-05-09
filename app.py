@@ -7,7 +7,7 @@ from flask_cors import CORS
 from werkzeug.utils import secure_filename
 
 from extract_citation import extract_citations_with_contexts
-from semantic_scholar import enrich_citation, enrich_citations_bulk
+from openalex import enrich_citation, enrich_citations_bulk
 from summarize import summarize_citation
 
 app = Flask(__name__)
@@ -83,8 +83,8 @@ def upload_pdf():
             for c in result.citations
         ]
 
-        # Enrich with Semantic Scholar metadata
-        print("[*] Fetching Semantic Scholar metadata...")
+        # Enrich with OpenAlex metadata
+        print("[*] Fetching OpenAlex metadata...")
         citations = enrich_citations_bulk(citations)
         print(f"[*] Enriched {sum(1 for c in citations if 'metadata' in c)} citations with metadata")
 

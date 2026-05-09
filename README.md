@@ -1,6 +1,6 @@
 # Citation Navigator
 
-A web application that extracts and analyzes citations from research papers. Upload a PDF and get structured citation data with metadata from Semantic Scholar.
+A web application that extracts and analyzes citations from research papers. Upload a PDF and get structured citation data with metadata from OpenAlex.
 
 ## Prerequisites
 
@@ -61,6 +61,9 @@ python app.py --no-clean
 
 # Custom port
 python app.py --port 5000
+
+# OpenAlex API key (optional, only for heavy usage)
+export OPENALEX_API_KEY=your-key-here
 ```
 
 ### 3. Frontend Setup
@@ -89,7 +92,7 @@ Frontend runs on http://localhost:3000
 
 - `POST /api/upload` - Upload PDF and extract citations
 - `GET /api/documents/<doc_id>/citations` - Get all citations for a document
-- `GET /api/documents/<doc_id>/citations/<cite_id>` - Get single citation with Semantic Scholar metadata
+- `GET /api/documents/<doc_id>/citations/<cite_id>` - Get single citation with OpenAlex metadata
 
 ## Project Structure
 
@@ -97,7 +100,7 @@ Frontend runs on http://localhost:3000
 final_project/
 ├── app.py                 # Flask backend
 ├── extract_citation.py    # GROBID PDF parsing
-├── semantic_scholar.py    # Semantic Scholar API client
+├── openalex.py            # OpenAlex API client
 ├── summarize.py           # LLM-powered citation summaries (Anthropic/Groq)
 ├── uploads/               # Uploaded PDFs
 ├── data/                  # Cached citation data

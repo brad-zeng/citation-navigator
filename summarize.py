@@ -122,20 +122,3 @@ Summarize this citation in 2-4 sentences."""
     except Exception as e:
         print(f"[!] LLM API error ({provider}): {e}")
         return None
-
-
-if __name__ == "__main__":
-    test_citation = {
-        'title': 'Attention Is All You Need',
-        'authors': ['Ashish Vaswani', 'Noam Shazeer', 'Niki Parmar'],
-        'year': '2017',
-        'contexts': [
-            'The Transformer architecture [1] has become the foundation for modern NLP, replacing recurrent models with self-attention mechanisms.',
-        ],
-        'metadata': {
-            'abstract': 'We propose a new simple network architecture, the Transformer, based solely on attention mechanisms, dispensing with recurrence and convolutions entirely.'
-        }
-    }
-
-    summary = summarize_citation(test_citation)
-    print("Summary:", summary)
