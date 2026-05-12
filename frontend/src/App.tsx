@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useMemo } from 'react';
 import { Document, Page, pdfjs } from 'react-pdf';
 import 'react-pdf/dist/Page/AnnotationLayer.css';
 import 'react-pdf/dist/Page/TextLayer.css';
@@ -51,6 +51,26 @@ function App() {
   const [error, setError] = useState<string | null>(null);
   const [abstractOpen, setAbstractOpen] = useState(false);
   const [contextOpen, setContextOpen] = useState(false);
+
+  const idToMarker = useMemo(() => {
+    const map: Record<string, string> = {};
+    if (!docData?.marker_to_id) return map;
+    const cleanMarker = (raw: string): string => {
+      let m = raw.trim().replace(/^[\s,;.:\-([]+|[\s,;.:\-)\]]+$/g, '');
+      if (/^\d+$/.test(m)) m = `[${m}]`;
+      return m;
+    };
+    const isNumeric = (m: string) => /^\[\d+\]$/.test(m);
+    for (const [marker, id] of Object.entries(docData.marker_to_id)) {
+      const cleaned = cleanMarker(marker);
+      if (!cleaned) continue;
+      const existing = map[id];
+      if (!existing || (isNumeric(cleaned) && !isNumeric(existing))) {
+        map[id] = cleaned;
+      }
+    }
+    return map;
+  }, [docData]);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = e.target.files?.[0];
@@ -193,7 +213,9 @@ function App() {
                       : 'hover:bg-gray-50 border-transparent'
                   }`}
                 >
-                  <span className="text-blue-500 font-semibold shrink-0">[{index + 1}]</span>
+                  <span className="text-blue-500 font-semibold shrink-0">
+                    {idToMarker[citation.id] || `[${index + 1}]`}
+                  </span>
                   <span className="text-slate-700 text-sm line-clamp-2">
                     {citation.title || citation.raw_text?.slice(0, 100) || 'Unknown title'}
                   </span>

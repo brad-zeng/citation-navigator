@@ -4,6 +4,7 @@ GROBID parses PDF documents and extracts structured bibliographic data.
 """
 
 import requests
+import time
 from dataclasses import dataclass
 from typing import Optional
 import xml.etree.ElementTree as ET
@@ -241,18 +242,27 @@ class ExtractionResult:
     marker_to_id: dict[str, str]  # marker text -> citation_id (e.g., "[1]" -> "b0")
 
 
-def _parse_marker_mapping(root: ET.Element, citation_ids: list[str]) -> dict[str, str]:
+def _parse_marker_mapping(root: ET.Element, citation_ids: list[str]) -> tuple[dict[str, str], set[str]]:
     """
     Extract mapping from in-text citation markers to citation IDs.
     Infers missing numeric markers based on the pattern.
     e.g., {"[1]": "b0", "[2]": "b1", "Smith et al., 2020": "b5"}
+
+    Returns:
+        (marker_to_id, direct_targets) — direct_targets is the set of citation
+        IDs that GROBID's body parser actually emitted as ref targets, before
+        any inference. Useful for spotting hallucinated bib entries that no
+        body text points to.
     """
     marker_to_id = {}
+    direct_targets = set()
 
     for ref in root.findall('.//tei:body//tei:ref[@type="bibr"]', TEI_NS):
         target = ref.get('target', '').lstrip('#')
         text = ''.join(ref.itertext()).strip()
 
+        if target:
+            direct_targets.add(target)
         if target and text and text not in marker_to_id:
             marker_to_id[text] = target
 
@@ -276,7 +286,7 @@ def _parse_marker_mapping(root: ET.Element, citation_ids: list[str]) -> dict[str
                 marker_to_id[marker] = cid
                 print(f"[*] Inferred missing marker: {marker} -> {cid}")
 
-    return marker_to_id
+    return marker_to_id, direct_targets
 
 
 def _parse_contexts_from_tei(root: ET.Element, marker_to_id: dict[str, str]) -> dict[str, list[str]]:
@@ -375,27 +385,52 @@ def extract_citations_with_contexts(
             "Please start GROBID with: docker run -p 8070:8070 lfoppiano/grobid:0.8.0"
         )
 
+    total_start = time.perf_counter()
+
+    t0 = time.perf_counter()
     tei_xml = client.process_pdf(pdf_path)
+    grobid_elapsed = time.perf_counter() - t0
+    print(f"[*] GROBID processing: {grobid_elapsed:.2f}s")
+
+    t0 = time.perf_counter()
     print("[*] Parsing TEI XML...")
     root = ET.fromstring(tei_xml)
+    print(f"[*] TEI parsing: {time.perf_counter() - t0:.2f}s")
 
+    t0 = time.perf_counter()
     print("[*] Extracting citations...")
     citations = []
     for bibl in root.findall('.//tei:listBibl/tei:biblStruct', TEI_NS):
         citation = _parse_bibl_struct(bibl)
         if citation:
             citations.append(citation)
-    print(f"[*] Found {len(citations)} citations")
+    print(f"[*] Found {len(citations)} citations ({time.perf_counter() - t0:.2f}s)")
 
+    t0 = time.perf_counter()
     print("[*] Extracting marker mappings...")
     citation_ids = [c.id for c in citations]
-    marker_to_id = _parse_marker_mapping(root, citation_ids)
-    print(f"[*] Found {len(marker_to_id)} unique markers")
+    marker_to_id, direct_targets = _parse_marker_mapping(root, citation_ids)
+    print(f"[*] Found {len(marker_to_id)} unique markers ({time.perf_counter() - t0:.2f}s)")
 
+    t0 = time.perf_counter()
     print("[*] Extracting contexts...")
     contexts = _parse_contexts_from_tei(root, marker_to_id)
-    print(f"[*] Found contexts for {len(contexts)} citations")
+    print(f"[*] Found contexts for {len(contexts)} citations ({time.perf_counter() - t0:.2f}s)")
 
+    # Drop bib entries that GROBID's body parser never linked to and that
+    # the context fallback also failed to find — almost always hallucinated
+    # splits of a real reference.
+    hallucinated = {
+        c.id for c in citations
+        if c.id not in direct_targets and not contexts.get(c.id)
+    }
+    if hallucinated:
+        print(f"[*] Removing {len(hallucinated)} likely hallucinated citations: {sorted(hallucinated)}")
+        citations = [c for c in citations if c.id not in hallucinated]
+        contexts = {k: v for k, v in contexts.items() if k not in hallucinated}
+        marker_to_id = {m: cid for m, cid in marker_to_id.items() if cid not in hallucinated}
+
+    print(f"[*] Total extraction time: {time.perf_counter() - total_start:.2f}s")
     return ExtractionResult(citations=citations, contexts=contexts, marker_to_id=marker_to_id)
 
 
