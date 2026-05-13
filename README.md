@@ -52,7 +52,7 @@ python app.py
 export ANTHROPIC_API_KEY=your-key-here
 python app.py --llm anthropic
 
-# Enable LLM summaries with Groq
+# Enable LLM summaries with Groq (free)
 export GROQ_API_KEY=your-key-here
 python app.py --llm groq
 
